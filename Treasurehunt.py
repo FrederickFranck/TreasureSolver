@@ -96,7 +96,8 @@ def opdracht5(relative_url):
     file_list = []
 
     #open het bestand en lees het in
-    #gebruikt hashlib om de SHA-512 hash te berekenen en
+    #gebruikt hashlib om de SHA-512 hash te berekenen en zet deze om naar hexidacimaal
+    #zodat deze kan doorgestuurd worden
     filename = "opdracht5.txt"
     readFile = open(filename, 'rb').read()
     file_hash = hashlib.sha512(readFile)
@@ -105,8 +106,9 @@ def opdracht5(relative_url):
     response = requests.post(url = (URL + "/opdracht5/"), json={"sha512":hash})
 
 
-    #als de request ok is wordt de json geprint en de relative pad van het bestand
-    #voor de volgende opdracht wordt gereturned
+    #als de request ok is wordt de json geprint en van alle relatieve urls worden de bestanden
+    #gedownload , alle namen van de bestanden en de MD5 checksum worden aan een lijst toegevoegt
+    #en als return waarde gegeven
     #anders wordt de status code weergeven om problemen proberen op te sporen
     if response.status_code == 200:
         json_data = response.json()
@@ -119,16 +121,22 @@ def opdracht5(relative_url):
     else:
         print(response)
 
+
 def opdracht6(file_list):
+    #het laatste element van de file list is de md5 hash en die wordt hier uit de lijst gehaald
     md5hash = file_list.pop()
+
+    #Elk bestand in de filelist wordt geopent en de md5 hash berekent
+    #als deze overeenkomt wordt het relative pad als oplossing doorgestuurd
     for file in file_list:
         readFile = open(file, 'rb').read()
         file_hash = hashlib.md5(readFile)
         hash = file_hash.hexdigest()
-        #print(hash)
+
         if(hash == md5hash):
             response = requests.post(url = (URL + "/opdracht6/"), json={"relatieve_url":("/static/opdracht5/" + file)})
 
+            #als we een goede response krijgen wordt het bericht eruit gehaald voor de volgende opdracht
             if response.status_code == 200:
 
                 json_data = response.json()
@@ -140,11 +148,15 @@ def opdracht6(file_list):
 
 def opdracht7(message):
 
+    #bericht opzetten naar bytes
     data = bytes(message,"utf-8")
+    #willekeurige key van 32 Bytes (= 32 * 8 Bits = 256 Bits) genereren
     key = get_random_bytes(32)
+    #cipher opstellen op basis van de key & het bericht versleutelen
     cipher = AES.new(key, AES.MODE_EAX)
     ciphertext,tag = cipher.encrypt_and_digest(data)
 
+    #Het versleutelt bericht de key & nonce worden in hexidecimaal doorgestuurd
     response = requests.post(url = (URL + "/opdracht7/"), json={
             "bericht_versleuteld": str(ciphertext.hex()),
              "sleutel" : str(key.hex()),
@@ -159,36 +171,14 @@ def opdracht7(message):
         print(response)
 
 
-def opdracht8():
-
-    message = "Kdg"
-    key = RSA.generate(2048)
-    private_key = key.export_key()
-    public_key = key.publickey().export_key()
-
-    cipher_rsa = PKCS1_OAEP.new(RSA.import_key(public_key))
-    encrypted_data = cipher_rsa.encrypt(bytes(message,"utf-8"))
-
-    response = requests.post(url = (URL + "/opdracht8/"), json={
-        "encrypted_data": encrypted_data.hex(),
-         "prive_sleutel" : private_key.hex()
-    })
-    if response.status_code == 200:
-        json_data = response.json()
-        pprint.pprint(json_data)
-        return
-    else:
-        print(response)
-
-
-
-
 def download_file(relative_url):
     response = requests.get(url = (URL + relative_url))
     open("opdracht5.txt","wb").write(response.content)
 
 def download_file2(relative_url):
     response = requests.get(url = (URL + relative_url))
+    #splits de relatieve url op om aan de filename te geraken
+    #bv. "/static/opdracht5/applicatie_jos.exe" => [""/static/opdracht","applicatie_jos.exe"]
     filename = response.url.split('5/')[1]
     open(filename,"wb").write(response.content)
 
@@ -206,9 +196,6 @@ def main():
     message = opdracht6(file_list)
     print("\n\n\n")
     opdracht7(message)
-    print("\n\n\n")
-    opdracht8()
-
 
 
 if __name__ == "__main__":
